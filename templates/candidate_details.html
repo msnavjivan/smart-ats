@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Candidate Details - Smart ATS{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">
+                    {{ candidate.parsed_data.contact_info.name or 'Candidate Profile' }}
+                </h2>
+                <p class="text-gray-600">Uploaded: {{ candidate.upload_date[:10] }}</p>
+            </div>
+            <div class="text-right">
+                <button onclick="downloadResume()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                    <i class="fas fa-download mr-2"></i>Download Resume
+                </button>
+            </div>
+        </div>
+        
+        <!-- Contact Information -->
+        <div class="grid md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg">
+            <div>
+                <span class="font-medium text-gray-600">Email:</span>
+                <p class="text-gray-800">{{ candidate.parsed_data.contact_info.email or 'Not provided' }}</p>
+            </div>
+            <div>
+                <span class="font-medium text-gray-600">Phone:</span>
+                <p class="text-gray-800">{{ candidate.parsed_data.contact_info.phone or 'Not provided' }}</p>
+            </div>
+            <div>
+                <span class="font-medium text-gray-600">LinkedIn:</span>
+                {% if candidate.parsed_data.contact_info.linkedin %}
+                <a href="https://{{ candidate.parsed_data.contact_info.linkedin }}" class="text-blue-600 hover:underline">
+                    {{ candidate.parsed_data.contact_info.linkedin }}
+                </a>
+                {% else %}
+                <p class="text-gray-800">Not provided</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Skills Section -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">
+            <i class="fas fa-code mr-2 text-blue-600"></i>Skills ({{ candidate.parsed_data.skills.skill_count }})
+        </h3>
+        
+        {% if candidate.parsed_data.skills.categorized %}
+        <div class="space-y-4">
+            {% for category, skills in candidate.parsed_data.skills.categorized.items() %}
+            <div>
+                <h4 class="font-medium text-gray-700 mb-2 capitalize">{{ category.replace('_', ' ') }}</h4>
+                <div class="flex flex-wrap gap-2">
+                    {% for skill in skills %}
+                    <span class="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">{{ skill }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="flex flex-wrap gap-2">
+            {% for skill in candidate.parsed_data.skills.all_skills %}
+            <span class="bg-gray-100 text-gray-800 text-sm px-3 py-1 rounded-full">{{ skill }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Experience Section -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">
+            <i class="fas fa-briefcase mr-2 text-green-600"></i>Experience
+        </h3>
+        
+        <div class="grid md:grid-cols-2 gap-6">
+            <div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-medium text-gray-700 mb-2">Experience Level</h4>
+                    <p class="text-2xl font-bold text-green-600">{{ candidate.parsed_data.experience.estimated_years }} years</p>
+                </div>
+            </div>
+            <div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-medium text-gray-700 mb-2">Job Titles Found</h4>
+                    <p class="text-2xl font-bold text-blue-600">{{ candidate.parsed_data.experience.title_count }}</p>
+                </div>
+            </div>
+        </div>
+        
+        {% if candidate.parsed_data.experience.potential_titles %}
+        <div class="mt-4">
+            <h4 class="font-medium text-gray-700 mb-2">Potential Job Titles</h4>
+            <div class="flex flex-wrap gap-2">
+                {% for title in candidate.parsed_data.experience.potential_titles %}
+                <span class="bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full">{{ title }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Education Section -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">
+            <i class="fas fa-graduation-cap mr-2 text-purple-600"></i>Education
+        </h3>
+        
+        {% if candidate.parsed_data.education.degrees %}
+        <div class="space-y-2">
+            {% for degree in candidate.parsed_data.education.degrees %}
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-medal text-purple-600"></i>
+                <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full capitalize">{{ degree }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500">No formal education detected in resume</p>
+        {% endif %}
+    </div>
+
+    <!-- Keywords & Analytics -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">
+            <i class="fas fa-chart-bar mr-2 text-orange-600"></i>Resume Analytics
+        </h3>
+        
+        <div class="grid md:grid-cols-4 gap-4">
+            <div class="bg-gray-50 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-gray-800">{{ candidate.parsed_data.summary_stats.word_count }}</div>
+                <div class="text-sm text-gray-600">Total Words</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-gray-800">{{ candidate.parsed_data.keywords.unique_words }}</div>
+                <div class="text-sm text-gray-600">Unique Words</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-gray-800">{{ candidate.parsed_data.skills.skill_count }}</div>
+                <div class="text-sm text-gray-600">Skills Identified</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-lg text-center">
+                <div class="text-2xl font-bold text-gray-800">{{ candidate.parsed_data.summary_stats.line_count }}</div>
+                <div class="text-sm text-gray-600">Lines</div>
+            </div>
+        </div>
+
+        <!-- Top Keywords -->
+        <div class="mt-6">
+            <h4 class="font-medium text-gray-700 mb-2">Most Frequent Keywords</h4>
+            <div class="flex flex-wrap gap-2">
+                {% for keyword, frequency in candidate.parsed_data.keywords.top_keywords[:15] %}
+                <span class="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded" style="opacity: '{{ (frequency / candidate.parsed_data.keywords.top_keywords[0][1]) }}'">
+                    {{ keyword }} ({{ frequency }})
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Actions</h3>
+        <div class="flex flex-wrap gap-3">
+            <button onclick="getSuggestions()" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 transition">
+                <i class="fas fa-lightbulb mr-2"></i>Get Improvement Suggestions
+            </button>
+            <button class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+                <i class="fas fa-envelope mr-2"></i>Contact Candidate
+            </button>
+            <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                <i class="fas fa-star mr-2"></i>Add to Favorites
+            </button>
+        </div>
+    </div>
+
+    <!-- Suggestions Section (Hidden by default) -->
+    <div id="suggestions" class="hidden mt-6"></div>
+</div>
+
+<script>
+    function downloadResume() {
+        // In a real implementation, this would download the original resume file
+        showNotification('Resume download feature will be implemented');
+    }
+
+    async function getSuggestions() {
+        try {
+            const response = await fetch(`/api/suggestions/{{ candidate.id }}`);
+            const data = await response.json();
+            
+            if (response.ok) {
+                showSuggestions(data.suggestions);
+            } else {
+                showNotification('Failed to load suggestions', 'error');
+            }
+        } catch (error) {
+            showNotification('Error loading suggestions: ' + error.message, 'error');
+        }
+    }
+
+    function showSuggestions(suggestions) {
+        const suggestionsDiv = document.getElementById('suggestions');
+        
+        const suggestionsHtml = `
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">
+                    <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+                    AI-Powered Improvement Suggestions
+                </h3>
+                <div class="space-y-4">
+                    ${suggestions.map(suggestion => `
+                        <div class="border-l-4 border-${suggestion.priority === 'Critical' ? 'red' : 
+                            suggestion.priority === 'High' ? 'orange' : 
+                            suggestion.priority === 'Medium' ? 'yellow' : 'blue'}-500 pl-4 py-2">
+                            <div class="flex justify-between items-start mb-2">
+                                <h4 class="font-medium text-gray-800">${suggestion.category}</h4>
+                                <span class="text-xs px-2 py-1 rounded ${
+                                    suggestion.priority === 'Critical' ? 'bg-red-100 text-red-800' :
+                                    suggestion.priority === 'High' ? 'bg-orange-100 text-orange-800' :
+                                    suggestion.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-blue-100 text-blue-800'
+                                }">${suggestion.priority}</span>
+                            </div>
+                            <p class="text-gray-700 mb-1">${suggestion.suggestion}</p>
+                            <p class="text-gray-500 text-sm"><strong>Impact:</strong> ${suggestion.impact}</p>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        
+        suggestionsDiv.innerHTML = suggestionsHtml;
+        suggestionsDiv.classList.remove('hidden');
+        
+        // Scroll to suggestions
+        suggestionsDiv.scrollIntoView({ behavior: 'smooth' });
+        
+        showNotification('Suggestions loaded successfully!');
+    }
+</script>
+{% endblock %}

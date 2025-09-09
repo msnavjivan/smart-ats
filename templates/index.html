@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center mb-12">
+    <h2 class="text-4xl font-bold text-gray-800 mb-4">Smart ATS Platform</h2>
+    <p class="text-xl text-gray-600 mb-8">AI-Powered Resume Screening & Candidate Matching</p>
+</div>
+
+<!-- Feature Cards -->
+<div class="grid md:grid-cols-3 gap-8 mb-12">
+    <!-- Upload Resume Card -->
+    <div class="bg-white rounded-lg shadow-lg p-6 card-hover">
+        <div class="text-center">
+            <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-file-upload text-blue-600 text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800 mb-2">Upload Resume</h3>
+            <p class="text-gray-600 mb-4">Upload candidate resumes for intelligent parsing and analysis</p>
+            <a href="/upload-resume" class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+                Get Started
+            </a>
+        </div>
+    </div>
+
+    <!-- Create Job Card -->
+    <div class="bg-white rounded-lg shadow-lg p-6 card-hover">
+        <div class="text-center">
+            <div class="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-briefcase text-green-600 text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800 mb-2">Create Job Posting</h3>
+            <p class="text-gray-600 mb-4">Define job requirements for intelligent candidate matching</p>
+            <a href="/create-job" class="inline-block bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">
+                Create Job
+            </a>
+        </div>
+    </div>
+
+    <!-- AI Matching Card -->
+    <div class="bg-white rounded-lg shadow-lg p-6 card-hover">
+        <div class="text-center">
+            <div class="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-brain text-purple-600 text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-800 mb-2">AI Matching</h3>
+            <p class="text-gray-600 mb-4">Advanced algorithms match candidates to job requirements</p>
+            <button class="inline-block bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition" disabled>
+                Coming Soon
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="bg-white rounded-lg shadow-lg p-8">
+    <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Platform Features</h3>
+    <div class="grid md:grid-cols-2 gap-6">
+        <div class="flex items-start space-x-4">
+            <i class="fas fa-check-circle text-green-500 text-xl mt-1"></i>
+            <div>
+                <h4 class="font-semibold text-gray-800">Intelligent Resume Parsing</h4>
+                <p class="text-gray-600">Extract structured data from PDF, DOC, and TXT files</p>
+            </div>
+        </div>
+        <div class="flex items-start space-x-4">
+            <i class="fas fa-check-circle text-green-500 text-xl mt-1"></i>
+            <div>
+                <h4 class="font-semibold text-gray-800">Skills Matching</h4>
+                <p class="text-gray-600">Advanced algorithms match candidate skills to job requirements</p>
+            </div>
+        </div>
+        <div class="flex items-start space-x-4">
+            <i class="fas fa-check-circle text-green-500 text-xl mt-1"></i>
+            <div>
+                <h4 class="font-semibold text-gray-800">Experience Analysis</h4>
+                <p class="text-gray-600">Evaluate candidate experience levels and career progression</p>
+            </div>
+        </div>
+        <div class="flex items-start space-x-4">
+            <i class="fas fa-check-circle text-green-500 text-xl mt-1"></i>
+            <div>
+                <h4 class="font-semibold text-gray-800">Improvement Suggestions</h4>
+                <p class="text-gray-600">AI-powered recommendations for resume optimization</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

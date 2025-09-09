@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Candidate Matches - Smart ATS{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">{{ job.title }}</h2>
+        <div class="grid md:grid-cols-3 gap-4 text-sm">
+            <div>
+                <span class="font-medium text-gray-600">Required Skills:</span>
+                <div class="mt-1">
+                    {% for skill in job.required_skills %}
+                    <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1 mb-1">{{ skill }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            <div>
+                <span class="font-medium text-gray-600">Experience:</span>
+                <p class="text-gray-800">{{ job.experience_years }} years</p>
+            </div>
+            <div>
+                <span class="font-medium text-gray-600">Education:</span>
+                <p class="text-gray-800">{{ job.education_level or 'Any' }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mb-6">
+    <h3 class="text-xl font-semibold text-gray-800">Candidate Matches ({{ matches|length }} found)</h3>
+</div>
+
+{% if matches %}
+<div class="space-y-4">
+    {% for match in matches %}
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <div class="flex justify-between items-start mb-4">
+            <div class="flex-1">
+                <h4 class="text-lg font-semibold text-gray-800">
+                    {{ match.candidate.parsed_data.contact_info.name or 'Candidate ' + loop.index|string }}
+                </h4>
+                <p class="text-gray-600">{{ match.candidate.parsed_data.contact_info.email or 'No email provided' }}</p>
+            </div>
+            <div class="text-right">
+                <div class="text-2xl font-bold text-{{ 'green' if match.match_score > 70 else 'yellow' if match.match_score > 40 else 'red' }}-600">
+                    {{ match.match_score }}%
+                </div>
+                <p class="text-sm text-gray-500">Match Score</p>
+            </div>
+        </div>
+
+        <!-- Score Breakdown -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div class="text-center">
+                <div class="text-lg font-semibold text-gray-700">{{ match.match_breakdown.skills }}%</div>
+                <div class="text-xs text-gray-500">Skills</div>
+            </div>
+            <div class="text-center">
+                <div class="text-lg font-semibold text-gray-700">{{ match.match_breakdown.experience }}%</div>
+                <div class="text-xs text-gray-500">Experience</div>
+            </div>
+            <div class="text-center">
+                <div class="text-lg font-semibold text-gray-700">{{ match.match_breakdown.education }}%</div>
+                <div class="text-xs text-gray-500">Education</div>
+            </div>
+            <div class="text-center">
+                <div class="text-lg font-semibold text-gray-700">{{ match.match_breakdown.keywords }}%</div>
+                <div class="text-xs text-gray-500">Keywords</div>
+            </div>
+        </div>
+
+        <!-- Candidate Summary -->
+        <div class="grid md:grid-cols-3 gap-4 mb-4 text-sm">
+            <div>
+                <span class="font-medium text-gray-600">Skills:</span>
+                <div class="mt-1">
+                    {% for skill in match.candidate.parsed_data.skills.all_skills[:6] %}
+                    <span class="inline-block bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded mr-1 mb-1">{{ skill }}</span>
+                    {% endfor %}
+                    {% if match.candidate.parsed_data.skills.all_skills|length > 6 %}
+                    <span class="text-xs text-gray-500">+{{ match.candidate.parsed_data.skills.all_skills|length - 6 }} more</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <span class="font-medium text-gray-600">Experience:</span>
+                <p class="text-gray-800">{{ match.candidate.parsed_data.experience.estimated_years }} years</p>
+            </div>
+            <div>
+                <span class="font-medium text-gray-600">Education:</span>
+                {% if match.candidate.parsed_data.education.degrees %}
+                <p class="text-gray-800">{{ match.candidate.parsed_data.education.degrees|join(', ') }}</p>
+                {% else %}
+                <p class="text-gray-500">Not specified</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Strengths and Gaps -->
+        <div class="grid md:grid-cols-2 gap-4 mb-4">
+            {% if match.strengths %}
+            <div>
+                <h5 class="font-medium text-green-700 mb-2">
+                    <i class="fas fa-check-circle mr-1"></i>Strengths
+                </h5>
+                <ul class="space-y-1">
+                    {% for strength in match.strengths %}
+                    <li class="text-sm text-green-700">• {{ strength }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            {% if match.gaps %}
+            <div>
+                <h5 class="font-medium text-orange-700 mb-2">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>Areas for Consideration
+                </h5>
+                <ul class="space-y-1">
+                    {% for gap in match.gaps %}
+                    <li class="text-sm text-orange-700">• {{ gap }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="flex justify-end space-x-2">
+            <a href="/candidate/{{ match.candidate.id }}" 
+               class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition text-sm">
+                View Details
+            </a>
+            <button class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition text-sm">
+                Contact Candidate
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow-lg p-8 text-center">
+    <i class="fas fa-search text-gray-400 text-4xl mb-4"></i>
+    <h3 class="text-xl font-semibold text-gray-800 mb-2">No Candidates Found</h3>
+    <p class="text-gray-600 mb-4">No candidates match your job requirements yet.</p>
+    <a href="/upload-resume" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+        Upload More Resumes
+    </a>
+</div>
+{% endif %}
+{% endblock %}
