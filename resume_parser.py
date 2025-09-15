@@ -1,29 +1,63 @@
-# resume_parser.py - Resume Parsing Engine
-import PyPDF2
-import docx
+# resume_parser.py - Resume Parsing Engine with Error Handling
 import re
 from collections import Counter
-import nltk
-from nltk.tokenize import word_tokenize, sent_tokenize
-from nltk.corpus import stopwords
-from nltk.stem import PorterStemmer
 import os
 
-# Download required NLTK data (run once)
+# Try importing required libraries with error handling
 try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt')
+    import PyPDF2
+    PDF_AVAILABLE = True
+except ImportError:
+    print("Warning: PyPDF2 not installed. PDF parsing will be disabled.")
+    PDF_AVAILABLE = False
 
 try:
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords')
+    import docx
+    DOCX_AVAILABLE = True
+except ImportError:
+    print("Warning: python-docx not installed. DOCX parsing will be disabled.")
+    DOCX_AVAILABLE = False
+
+try:
+    import nltk
+    from nltk.tokenize import word_tokenize, sent_tokenize
+    from nltk.corpus import stopwords
+    from nltk.stem import PorterStemmer
+    NLTK_AVAILABLE = True
+    
+    # Download required NLTK data (run once)
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        print("Downloading NLTK punkt tokenizer...")
+        nltk.download('punkt')
+
+    try:
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        print("Downloading NLTK stopwords...")
+        nltk.download('stopwords')
+        
+except ImportError:
+    print("Warning: NLTK not installed. Advanced text processing will be limited.")
+    NLTK_AVAILABLE = False
 
 class ResumeParser:
     def __init__(self):
-        self.stop_words = set(stopwords.words('english'))
-        self.stemmer = PorterStemmer()
+        if NLTK_AVAILABLE:
+            self.stop_words = set(stopwords.words('english'))
+            self.stemmer = PorterStemmer()
+        else:
+            # Basic stop words if NLTK is not available
+            self.stop_words = {
+                'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one',
+                'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old',
+                'see', 'two', 'who', 'boy', 'did', 'she', 'use', 'way', 'will', 'have', 'been', 'that',
+                'this', 'with', 'from', 'they', 'know', 'want', 'been', 'good', 'much', 'some', 'time',
+                'very', 'when', 'come', 'here', 'just', 'like', 'long', 'make', 'many', 'over', 'such',
+                'take', 'than', 'them', 'well', 'were'
+            }
+            self.stemmer = None
         
         # Common skills database (can be expanded)
         self.skills_database = {
@@ -48,9 +82,15 @@ class ResumeParser:
         
         try:
             if file_extension == 'pdf':
-                text = self._extract_from_pdf(filepath)
+                if PDF_AVAILABLE:
+                    text = self._extract_from_pdf(filepath)
+                else:
+                    raise Exception("PDF parsing not available. Please install PyPDF2: pip install PyPDF2")
             elif file_extension in ['doc', 'docx']:
-                text = self._extract_from_docx(filepath)
+                if DOCX_AVAILABLE:
+                    text = self._extract_from_docx(filepath)
+                else:
+                    raise Exception("DOCX parsing not available. Please install python-docx: pip install python-docx")
             elif file_extension == 'txt':
                 text = self._extract_from_txt(filepath)
             else:
@@ -87,7 +127,12 @@ class ResumeParser:
             with open(filepath, 'r', encoding='utf-8') as file:
                 text = file.read()
         except Exception as e:
-            raise Exception(f"TXT extraction error: {str(e)}")
+            try:
+                # Try with different encoding
+                with open(filepath, 'r', encoding='latin-1') as file:
+                    text = file.read()
+            except Exception as e2:
+                raise Exception(f"TXT extraction error: {str(e)} and {str(e2)}")
         return text
     
     def parse_resume(self, filepath):
@@ -216,11 +261,19 @@ class ResumeParser:
         }
     
     def _extract_keywords(self, text):
-        """Extract important keywords using NLP"""
+        """Extract important keywords using basic or advanced NLP"""
+        if NLTK_AVAILABLE:
+            return self._extract_keywords_nltk(text)
+        else:
+            return self._extract_keywords_basic(text)
+    
+    def _extract_keywords_nltk(self, text):
+        """Extract keywords using NLTK"""
         # Tokenize and clean
         tokens = word_tokenize(text.lower())
         tokens = [token for token in tokens if token.isalpha() and token not in self.stop_words]
-        tokens = [self.stemmer.stem(token) for token in tokens]
+        if self.stemmer:
+            tokens = [self.stemmer.stem(token) for token in tokens]
         
         # Get most common words
         word_freq = Counter(tokens)
@@ -230,6 +283,24 @@ class ResumeParser:
             'top_keywords': top_keywords,
             'total_words': len(tokens),
             'unique_words': len(set(tokens))
+        }
+    
+    def _extract_keywords_basic(self, text):
+        """Extract keywords using basic text processing"""
+        # Simple word extraction and filtering
+        words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
+        
+        # Filter out stop words
+        important_words = [word for word in words if word not in self.stop_words and len(word) > 3]
+        
+        # Get most common words
+        word_freq = Counter(important_words)
+        top_keywords = word_freq.most_common(20)
+        
+        return {
+            'top_keywords': top_keywords,
+            'total_words': len(important_words),
+            'unique_words': len(set(important_words))
         }
     
     def _generate_summary_stats(self, text):
