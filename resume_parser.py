@@ -1,22 +1,29 @@
-# resume_parser.py - Resume Parsing Engine (No NLTK dependency)
+# resume_parser.py - Resume Parsing Engine
 import PyPDF2
 import docx
 import re
 from collections import Counter
+import nltk
+from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
 import os
+
+# Download required NLTK data (run once)
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
+
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords')
 
 class ResumeParser:
     def __init__(self):
-        # Basic stop words (no NLTK needed)
-        self.stop_words = {
-            'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one',
-            'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old',
-            'see', 'two', 'who', 'boy', 'did', 'she', 'use', 'way', 'will', 'have', 'been', 'that',
-            'this', 'with', 'from', 'they', 'know', 'want', 'been', 'good', 'much', 'some', 'time',
-            'very', 'when', 'come', 'here', 'just', 'like', 'long', 'make', 'many', 'over', 'such',
-            'take', 'than', 'them', 'well', 'were', 'what', 'your', 'work', 'years', 'would', 'there',
-            'said', 'each', 'which', 'their', 'called', 'other', 'made', 'more', 'find', 'where'
-        }
+        self.stop_words = set(stopwords.words('english'))
+        self.stemmer = PorterStemmer()
         
         # Common skills database (can be expanded)
         self.skills_database = {
@@ -33,6 +40,20 @@ class ResumeParser:
         self.all_skills = []
         for category, skills in self.skills_database.items():
             self.all_skills.extend(skills)
+        
+        # Enhanced phone number patterns
+        self.phone_patterns = [
+            # US formats
+            r'\+?1[-.\s]?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})',
+            r'\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})',
+            # International formats
+            r'\+[0-9]{1,4}[-.\s]?\(?[0-9]{1,4}\)?[-.\s]?[0-9]{3,4}[-.\s]?[0-9]{3,4}',
+            # General patterns
+            r'[0-9]{3}[-.\s][0-9]{3}[-.\s][0-9]{4}',
+            r'\([0-9]{3}\)\s*[0-9]{3}[-.\s]?[0-9]{4}',
+            # 10-digit numbers
+            r'\b[0-9]{10}\b'
+        ]
     
     def extract_text_from_file(self, filepath):
         """Extract text from various file formats"""
@@ -80,12 +101,7 @@ class ResumeParser:
             with open(filepath, 'r', encoding='utf-8') as file:
                 text = file.read()
         except Exception as e:
-            try:
-                # Try with different encoding
-                with open(filepath, 'r', encoding='latin-1') as file:
-                    text = file.read()
-            except Exception as e2:
-                raise Exception(f"TXT extraction error: {str(e)} and {str(e2)}")
+            raise Exception(f"TXT extraction error: {str(e)}")
         return text
     
     def parse_resume(self, filepath):
@@ -107,30 +123,96 @@ class ResumeParser:
         return parsed_data
     
     def _extract_contact_info(self, text):
-        """Extract contact information"""
+        """Enhanced contact information extraction"""
         contact_info = {}
         
-        # Email extraction
-        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-        emails = re.findall(email_pattern, text)
-        contact_info['email'] = emails[0] if emails else None
+        # Enhanced email extraction
+        email_patterns = [
+            r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+            r'\b[A-Za-z0-9._%+-]+\s*@\s*[A-Za-z0-9.-]+\s*\.\s*[A-Z|a-z]{2,}\b'
+        ]
         
-        # Phone number extraction
-        phone_pattern = r'(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}'
-        phones = re.findall(phone_pattern, text)
-        contact_info['phone'] = ''.join(phones[0]) if phones else None
+        emails = []
+        for pattern in email_patterns:
+            emails.extend(re.findall(pattern, text))
         
-        # LinkedIn extraction
-        linkedin_pattern = r'linkedin\.com/in/[\w-]+'
-        linkedin = re.findall(linkedin_pattern, text.lower())
-        contact_info['linkedin'] = linkedin[0] if linkedin else None
+        # Clean and validate emails
+        valid_emails = []
+        for email in emails:
+            email = email.strip().replace(' ', '')
+            if '@' in email and '.' in email.split('@')[1]:
+                valid_emails.append(email)
         
-        # Name extraction (simple approach - first line or before email)
-        lines = text.strip().split('\n')
-        potential_name = lines[0].strip() if lines else ""
-        # Remove common resume headers
-        if not any(word in potential_name.lower() for word in ['resume', 'cv', 'curriculum']):
-            contact_info['name'] = potential_name[:50]  # Limit length
+        contact_info['email'] = valid_emails[0] if valid_emails else None
+        
+        # Enhanced phone number extraction
+        phones = []
+        for pattern in self.phone_patterns:
+            matches = re.findall(pattern, text)
+            for match in matches:
+                if isinstance(match, tuple):
+                    # Reconstruct phone from groups
+                    phone = ''.join(match)
+                else:
+                    phone = match
+                
+                # Clean phone number
+                phone = re.sub(r'[^\d]', '', phone)
+                
+                # Validate phone length (US: 10 digits, International: 7-15 digits)
+                if 7 <= len(phone) <= 15:
+                    phones.append(phone)
+        
+        # Format the best phone number
+        if phones:
+            best_phone = phones[0]
+            if len(best_phone) == 10:
+                # Format US number: (XXX) XXX-XXXX
+                formatted = f"({best_phone[:3]}) {best_phone[3:6]}-{best_phone[6:]}"
+            else:
+                formatted = best_phone
+            contact_info['phone'] = formatted
+        else:
+            contact_info['phone'] = None
+        
+        # Enhanced LinkedIn extraction
+        linkedin_patterns = [
+            r'linkedin\.com/in/[\w-]+',
+            r'linkedin\.com/pub/[\w-]+',
+            r'www\.linkedin\.com/in/[\w-]+',
+            r'https?://(?:www\.)?linkedin\.com/in/[\w-]+'
+        ]
+        
+        linkedin_urls = []
+        for pattern in linkedin_patterns:
+            matches = re.findall(pattern, text.lower())
+            linkedin_urls.extend(matches)
+        
+        if linkedin_urls:
+            # Clean up the URL
+            linkedin = linkedin_urls[0]
+            if not linkedin.startswith('http'):
+                linkedin = 'https://' + linkedin
+            contact_info['linkedin'] = linkedin
+        else:
+            contact_info['linkedin'] = None
+        
+        # Enhanced name extraction
+        lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
+        
+        # Look for name in first few lines
+        potential_names = []
+        for i, line in enumerate(lines[:5]):
+            # Skip lines with common resume headers
+            skip_keywords = ['resume', 'cv', 'curriculum', 'vitae', '@', 'phone', 'email', 'address']
+            if not any(keyword in line.lower() for keyword in skip_keywords):
+                # Check if line looks like a name (2-4 words, mostly letters)
+                words = line.split()
+                if 2 <= len(words) <= 4:
+                    if all(word.isalpha() or word.replace('.', '').isalpha() for word in words):
+                        potential_names.append(line)
+        
+        contact_info['name'] = potential_names[0][:50] if potential_names else None
         
         return contact_info
     
@@ -214,28 +296,21 @@ class ResumeParser:
         }
     
     def _extract_keywords(self, text):
-        """Extract important keywords using basic text processing"""
-        # Simple word extraction and filtering
-        words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
-        
-        # Filter out stop words and short words
-        important_words = [word for word in words if word not in self.stop_words and len(word) > 3]
+        """Extract important keywords using NLP"""
+        # Tokenize and clean
+        tokens = word_tokenize(text.lower())
+        tokens = [token for token in tokens if token.isalpha() and token not in self.stop_words]
+        tokens = [self.stemmer.stem(token) for token in tokens]
         
         # Get most common words
-        word_freq = Counter(important_words)
+        word_freq = Counter(tokens)
         top_keywords = word_freq.most_common(20)
         
         return {
             'top_keywords': top_keywords,
-            'total_words': len(important_words),
-            'unique_words': len(set(important_words))
+            'total_words': len(tokens),
+            'unique_words': len(set(tokens))
         }
-    
-    def _tokenize_words(self, text):
-        """Basic word tokenization without NLTK"""
-        # Simple regex-based tokenization
-        words = re.findall(r'\b[a-zA-Z]+\b', text.lower())
-        return words
     
     def _generate_summary_stats(self, text):
         """Generate summary statistics"""
