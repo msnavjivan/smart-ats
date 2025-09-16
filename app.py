@@ -7,9 +7,9 @@ from datetime import datetime
 import re
 from collections import Counter
 
-# Import our enhanced modules
-from enhanced_resume_parser import EnhancedResumeParser
-from enhanced_matching_engine import EnhancedMatchingEngine
+# Import our custom modules
+from resume_parser import ResumeParser
+from matching_engine import MatchingEngine
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads/resumes'
@@ -19,9 +19,9 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs('data', exist_ok=True)
 
-# Initialize enhanced components
-resume_parser = EnhancedResumeParser()
-matching_engine = EnhancedMatchingEngine()
+# Initialize components
+resume_parser = ResumeParser()
+matching_engine = MatchingEngine()
 
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt'}
 
@@ -97,77 +97,9 @@ def view_all_jobs():
     jobs = load_all_jobs()
     return render_template('all_jobs.html', jobs=jobs)
 
-def load_all_candidates():
-    """Load all candidate data from files"""
-    candidates = []
-    data_dir = 'data'
-    
-    if not os.path.exists(data_dir):
-        return candidates
-    
-    for filename in os.listdir(data_dir):
-        if filename.startswith('job_'):
-            continue  # Skip job files
-        
-        try:
-            with open(os.path.join(data_dir, filename), 'r', encoding='utf-8') as f:
-                candidate_data = json.load(f)
-                candidates.append(candidate_data)
-        except Exception as e:
-            print(f"Error loading {filename}: {e}")
-            continue
-    
-    # Sort by upload date (newest first)
-    candidates.sort(key=lambda x: x.get('upload_date', ''), reverse=True)
-    return candidates
-
-def load_all_jobs():
-    """Load all job postings from files"""
-    jobs = []
-    data_dir = 'data'
-    
-    if not os.path.exists(data_dir):
-        return jobs
-    
-    for filename in os.listdir(data_dir):
-        if not filename.startswith('job_'):
-            continue  # Skip candidate files
-        
-        try:
-            with open(os.path.join(data_dir, filename), 'r', encoding='utf-8') as f:
-                job_data = json.load(f)
-                jobs.append(job_data)
-        except Exception as e:
-            print(f"Error loading {filename}: {e}")
-            continue
-    
-    # Sort by creation date (newest first)
-    jobs.sort(key=lambda x: x.get('created_date', ''), reverse=True)
-    return jobs
-
-@app.route('/')
-def index():
-    # Load existing data
-    candidates = load_all_candidates()
-    jobs = load_all_jobs()
-    
-    return render_template('enhanced_index.html', 
-                         candidates=candidates[:5],  # Show last 5 candidates
-                         jobs=jobs[:5],  # Show last 5 jobs
-                         total_candidates=len(candidates),
-                         total_jobs=len(jobs))
-
-@app.route('/candidates')
-def view_all_candidates():
-    """View all uploaded candidates"""
-    candidates = load_all_candidates()
-    return render_template('all_candidates.html', candidates=candidates)
-
-@app.route('/jobs')
-def view_all_jobs():
-    """View all job postings"""
-    jobs = load_all_jobs()
-    return render_template('all_jobs.html', jobs=jobs)
+# @app.route('/')
+# def index():
+#     return render_template('index.html')
 
 @app.route('/upload-resume', methods=['GET', 'POST'])
 def upload_resume():
@@ -186,7 +118,7 @@ def upload_resume():
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
             
-            # Parse the resume with enhanced parser
+            # Parse the resume
             try:
                 parsed_data = resume_parser.parse_resume(filepath)
                 
@@ -244,7 +176,7 @@ def create_job():
         
         return redirect(url_for('match_candidates', job_id=job_data['id']))
     
-    return render_template('enhanced_create_job.html')
+    return render_template('create_job.html')
 
 @app.route('/match-candidates/<job_id>')
 def match_candidates(job_id):
@@ -261,7 +193,7 @@ def match_candidates(job_id):
     # Enhanced matching with dynamic keywords
     matches = matching_engine.match_candidates_enhanced(job_data, candidates)
     
-    return render_template('enhanced_matches.html', job=job_data, matches=matches)
+    return render_template('matches.html', job=job_data, matches=matches)
 
 @app.route('/candidate/<candidate_id>')
 def view_candidate(candidate_id):
@@ -292,61 +224,6 @@ def get_suggestions(candidate_id):
         return jsonify({'suggestions': suggestions})
     except FileNotFoundError:
         return jsonify({'error': 'Candidate not found'}), 404
-
-@app.route('/api/reparse/<candidate_id>')
-def reparse_candidate(candidate_id):
-    """Reparse a candidate with enhanced algorithms"""
-    try:
-        with open(f'data/{candidate_id}.json', 'r', encoding='utf-8') as f:
-            candidate_data = json.load(f)
-        
-        # Get the original file path
-        original_file = os.path.join(app.config['UPLOAD_FOLDER'], candidate_data['filename'])
-        
-        if not os.path.exists(original_file):
-            return jsonify({'error': 'Original resume file not found'}), 404
-        
-        # Reparse with enhanced parser
-        parsed_data = resume_parser.parse_resume(original_file)
-        
-        # Update candidate data
-        candidate_data['parsed_data'] = parsed_data
-        candidate_data['last_updated'] = datetime.now().isoformat()
-        
-        # Save updated data
-        with open(f'data/{candidate_id}.json', 'w', encoding='utf-8') as f:
-            json.dump(candidate_data, f, indent=2, ensure_ascii=False)
-        
-        return jsonify({
-            'message': 'Resume reparsed successfully',
-            'parsed_data': parsed_data
-        })
-        
-    except Exception as e:
-        return jsonify({'error': f'Failed to reparse: {str(e)}'}), 500
-
-@app.route('/delete-candidate/<candidate_id>', methods=['POST'])
-def delete_candidate(candidate_id):
-    """Delete a candidate and their resume file"""
-    try:
-        # Load candidate data to get filename
-        with open(f'data/{candidate_id}.json', 'r', encoding='utf-8') as f:
-            candidate_data = json.load(f)
-        
-        # Delete resume file
-        resume_file = os.path.join(app.config['UPLOAD_FOLDER'], candidate_data['filename'])
-        if os.path.exists(resume_file):
-            os.remove(resume_file)
-        
-        # Delete data file
-        data_file = f'data/{candidate_id}.json'
-        if os.path.exists(data_file):
-            os.remove(data_file)
-        
-        return jsonify({'message': 'Candidate deleted successfully'})
-        
-    except Exception as e:
-        return jsonify({'error': f'Failed to delete candidate: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
