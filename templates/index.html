@@ -1,12 +1,37 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="text-center mb-12">
-    <h2 class="text-4xl font-bold text-gray-800 mb-4">Smart ATS Platform</h2>
-    <p class="text-xl text-gray-600 mb-8">AI-Powered Resume Screening & Candidate Matching</p>
+<!-- Dashboard Header -->
+<div class="text-center mb-8">
+    <h1 class="text-4xl font-bold text-gray-800 mb-2">Smart ATS Dashboard</h1>
+    <p class="text-xl text-gray-600">AI-Powered Resume Screening & Candidate Matching System</p>
 </div>
 
-<!-- Feature Cards -->
+<!-- Quick Stats -->
+<div class="grid md:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow-lg p-6 text-center">
+        <div class="text-3xl font-bold text-blue-600">{{ total_candidates }}</div>
+        <div class="text-gray-600">Total Resumes</div>
+    </div>
+    <div class="bg-white rounded-lg shadow-lg p-6 text-center">
+        <div class="text-3xl font-bold text-green-600">{{ total_jobs }}</div>
+        <div class="text-gray-600">Job Postings</div>
+    </div>
+    <div class="bg-white rounded-lg shadow-lg p-6 text-center">
+        <div class="text-3xl font-bold text-purple-600">
+            {% if total_jobs > 0 %}{{ (total_candidates / total_jobs) | round(1) }}{% else %}0{% endif %}
+        </div>
+        <div class="text-gray-600">Avg Candidates/Job</div>
+    </div>
+    <div class="bg-white rounded-lg shadow-lg p-6 text-center">
+        <div class="text-3xl font-bold text-orange-600">
+            {% if candidates %}{{ candidates|length }}{% else %}0{% endif %}
+        </div>
+        <div class="text-gray-600">Recent Uploads</div>
+    </div>
+</div>
+
+<!-- Action Cards -->
 <div class="grid md:grid-cols-3 gap-8 mb-12">
     <!-- Upload Resume Card -->
     <div class="bg-white rounded-lg shadow-lg p-6 card-hover">
@@ -14,10 +39,10 @@
             <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i class="fas fa-file-upload text-blue-600 text-2xl"></i>
             </div>
-            <h3 class="text-xl font-semibold text-gray-800 mb-2">Upload Resume</h3>
-            <p class="text-gray-600 mb-4">Upload candidate resumes for intelligent parsing and analysis</p>
+            <h3 class="text-xl font-semibold text-gray-800 mb-2">Upload New Resume</h3>
+            <p class="text-gray-600 mb-4">Parse and analyze candidate resumes with enhanced AI algorithms</p>
             <a href="/upload-resume" class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
-                Get Started
+                Upload Resume
             </a>
         </div>
     </div>
@@ -29,60 +54,106 @@
                 <i class="fas fa-briefcase text-green-600 text-2xl"></i>
             </div>
             <h3 class="text-xl font-semibold text-gray-800 mb-2">Create Job Posting</h3>
-            <p class="text-gray-600 mb-4">Define job requirements for intelligent candidate matching</p>
+            <p class="text-gray-600 mb-4">Define requirements with dynamic keyword extraction</p>
             <a href="/create-job" class="inline-block bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">
                 Create Job
             </a>
         </div>
     </div>
 
-    <!-- AI Matching Card -->
+    <!-- View All Card -->
     <div class="bg-white rounded-lg shadow-lg p-6 card-hover">
         <div class="text-center">
             <div class="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-brain text-purple-600 text-2xl"></i>
+                <i class="fas fa-users text-purple-600 text-2xl"></i>
             </div>
-            <h3 class="text-xl font-semibold text-gray-800 mb-2">AI Matching</h3>
-            <p class="text-gray-600 mb-4">Advanced algorithms match candidates to job requirements</p>
-            <button class="inline-block bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition" disabled>
-                Coming Soon
-            </button>
+            <h3 class="text-xl font-semibold text-gray-800 mb-2">Manage Candidates</h3>
+            <p class="text-gray-600 mb-4">View and manage all uploaded candidate profiles</p>
+            <a href="/candidates" class="inline-block bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition">
+                View All
+            </a>
         </div>
     </div>
 </div>
 
-<!-- Features Section -->
-<div class="bg-white rounded-lg shadow-lg p-8">
-    <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Platform Features</h3>
-    <div class="grid md:grid-cols-2 gap-6">
-        <div class="flex items-start space-x-4">
-            <i class="fas fa-check-circle text-green-500 text-xl mt-1"></i>
-            <div>
-                <h4 class="font-semibold text-gray-800">Intelligent Resume Parsing</h4>
-                <p class="text-gray-600">Extract structured data from PDF, DOC, and TXT files</p>
-            </div>
+<!-- Recent Activity -->
+<div class="grid md:grid-cols-2 gap-8 mb-8">
+    <!-- Recent Candidates -->
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-gray-800">Recent Candidates</h3>
+            <a href="/candidates" class="text-blue-600 hover:text-blue-800 text-sm">View All →</a>
         </div>
-        <div class="flex items-start space-x-4">
-            <i class="fas fa-check-circle text-green-500 text-xl mt-1"></i>
-            <div>
-                <h4 class="font-semibold text-gray-800">Skills Matching</h4>
-                <p class="text-gray-600">Advanced algorithms match candidate skills to job requirements</p>
+        
+        {% if candidates %}
+        <div class="space-y-3">
+            {% for candidate in candidates %}
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                <div class="flex-1">
+                    <div class="font-medium text-gray-800">
+                        {{ candidate.parsed_data.contact_info.name or 'Unnamed Candidate' }}
+                    </div>
+                    <div class="text-sm text-gray-600">
+                        {{ candidate.parsed_data.skills.skill_count }} skills • 
+                        {{ candidate.parsed_data.experience.estimated_years }} years exp
+                    </div>
+                    <div class="text-xs text-gray-500">
+                        Uploaded: {{ candidate.upload_date[:10] }}
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <a href="/candidate/{{ candidate.id }}" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition">
+                        View
+                    </a>
+                </div>
             </div>
+            {% endfor %}
         </div>
-        <div class="flex items-start space-x-4">
-            <i class="fas fa-check-circle text-green-500 text-xl mt-1"></i>
-            <div>
-                <h4 class="font-semibold text-gray-800">Experience Analysis</h4>
-                <p class="text-gray-600">Evaluate candidate experience levels and career progression</p>
+        {% else %}
+        <div class="text-center py-8 text-gray-500">
+            <i class="fas fa-inbox text-4xl mb-2"></i>
+            <p>No candidates uploaded yet</p>
+            <a href="/upload-resume" class="text-blue-600 hover:text-blue-800">Upload your first resume →</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Jobs -->
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-gray-800">Recent Job Postings</h3>
+            <a href="/jobs" class="text-blue-600 hover:text-blue-800 text-sm">View All →</a>
+        </div>
+        
+        {% if jobs %}
+        <div class="space-y-3">
+            {% for job in jobs %}
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                <div class="flex-1">
+                    <div class="font-medium text-gray-800">{{ job.title }}</div>
+                    <div class="text-sm text-gray-600">
+                        {{ job.required_skills|length }} skills required • 
+                        {{ job.experience_years }} years exp
+                    </div>
+                    <div class="text-xs text-gray-500">
+                        Created: {{ job.created_date[:10] }}
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <a href="/match-candidates/{{ job.id }}" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition">
+                        Match
+                    </a>
+                </div>
             </div>
+            {% endfor %}
         </div>
-        <div class="flex items-start space-x-4">
-            <i class="fas fa-check-circle text-green-500 text-xl mt-1"></i>
-            <div>
-                <h4 class="font-semibold text-gray-800">Improvement Suggestions</h4>
-                <p class="text-gray-600">AI-powered recommendations for resume optimization</p>
-            </div>
+        {% else %}
+        <div class="text-center py-8 text-gray-500">
+            <i class="fas fa-briefcase text-4xl mb-2"></i>
+            <p>No job postings created yet</p>
+            <a href="/create-job" class="text-blue-600 hover:text-blue-800">Create your first job →</a>
         </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
